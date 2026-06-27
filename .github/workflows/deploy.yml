@@ -74,7 +74,8 @@ jobs:
 
       - name: Add VPS to known hosts
         run: |
-          ssh-keyscan -p "${{ env.VPS_PORT }}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ env.VPS_PORT }}" -T 10 -t rsa,ecdsa,ed25519 \
+            "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       # ──────────────────────────────────────────────────────────────────────
       # 4. Criar diretório de deploy na VPS (idempotente)
