@@ -16,6 +16,14 @@ interface IInstagramMeResponse {
   };
 }
 
+interface IInstagramMediaFieldsResponse {
+  media_url?: string;
+  thumbnail_url?: string;
+  error?: {
+    message?: string;
+  };
+}
+
 export class InstagramGraphClient implements IInstagramGraphService {
   async getProfile(accessToken: string): Promise<IInstagramProfile> {
     const params = new URLSearchParams({
@@ -53,5 +61,26 @@ export class InstagramGraphClient implements IInstagramGraphService {
       displayName: data.name ?? null,
       profilePictureUrl: data.profile_picture_url ?? null,
     };
+  }
+
+  async getMediaThumbnailUrl(
+    mediaId: string,
+    accessToken: string,
+  ): Promise<string | null> {
+    try {
+      const url = new URL(`https://graph.instagram.com/v21.0/${mediaId}`);
+      url.searchParams.set("fields", "media_url,thumbnail_url");
+      url.searchParams.set("access_token", accessToken);
+
+      const response = await fetch(url.toString());
+      const data = (await response.json()) as IInstagramMediaFieldsResponse;
+
+      if (!response.ok) return null;
+
+      // thumbnail_url exists for videos/reels; media_url for images
+      return data.thumbnail_url ?? data.media_url ?? null;
+    } catch {
+      return null;
+    }
   }
 }

@@ -129,3 +129,39 @@ export class ListPublicationsUseCase {
     return publications.map(mapPublicationToDto);
   }
 }
+
+export class GetPublicationThumbnailUseCase {
+  constructor(
+    private readonly publicationRepository: IPublicationRepository,
+    private readonly instagramAccountRepository: IInstagramConnectedAccountRepository,
+    private readonly instagramGraphClient: { getMediaThumbnailUrl: (mediaId: string, accessToken: string) => Promise<string | null> },
+  ) {}
+
+  async execute(authUserId: string, publicationId: string): Promise<string | null> {
+    const publication = await this.publicationRepository.findByIdAndUserId(
+      publicationId,
+      authUserId,
+    );
+
+    if (!publication) {
+      throw new AppError("Publicação não encontrada", 404, "publication_not_found");
+    }
+
+    const successTarget = publication.targets.find(
+      (t) => t.instagramMediaId !== null,
+    );
+
+    if (!successTarget?.instagramMediaId) return null;
+
+    const account = await this.instagramAccountRepository.findById(
+      successTarget.instagramConnectedAccountId,
+    );
+
+    if (!account) return null;
+
+    return this.instagramGraphClient.getMediaThumbnailUrl(
+      successTarget.instagramMediaId,
+      account.accessToken,
+    );
+  }
+}

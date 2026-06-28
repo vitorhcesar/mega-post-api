@@ -1,6 +1,7 @@
 import {
   CreateAndPublishPublicationUseCase,
   GetPublicationUseCase,
+  GetPublicationThumbnailUseCase,
   ListPublicationsUseCase,
 } from "@/app/usecases/publication/create-and-publish-publication.usecase";
 import { getAuthContext } from "@/http/client";
@@ -10,6 +11,8 @@ import { EnvService } from "@/http/services/env/env.service";
 import { createPublicationBodySchema } from "@/http/validation/schemas/publication.schema";
 import { PrismaInstagramConnectedAccountRepository } from "@/infra/database/prisma/repositories/prisma-instagram-connected-account.repository";
 import { PrismaPublicationRepository } from "@/infra/database/prisma/repositories/prisma-publication.repository";
+import { PrismaInstagramConnectedAccountRepository } from "@/infra/database/prisma/repositories/prisma-instagram-connected-account.repository";
+import { InstagramGraphClient } from "@/infra/instagram/instagram-graph.client";
 import { MinioTemporaryPublicationMediaStorage } from "@/infra/object-storage/minio-temporary-publication-media.storage";
 import { PublicationQueue } from "@/infra/queue/publication-queue";
 
@@ -41,8 +44,14 @@ export class PublicationRoutes extends BaseHttpRoute {
         publicationQueue,
         env,
       );
+    const instagramGraphClient = new InstagramGraphClient();
     const getPublicationUseCase = new GetPublicationUseCase(publicationRepository);
     const listPublicationsUseCase = new ListPublicationsUseCase(publicationRepository);
+    const getPublicationThumbnailUseCase = new GetPublicationThumbnailUseCase(
+      publicationRepository,
+      instagramConnectedAccountRepository,
+      instagramGraphClient,
+    );
 
     route.get("/publications", async (context) => {
       const { authUserId } = getAuthContext(context);
@@ -109,6 +118,18 @@ export class PublicationRoutes extends BaseHttpRoute {
       );
 
       return this.successResponse("Publicação enfileirada", publication, 202);
+    });
+
+    route.get("/publications/:publicationId/thumbnail", async (context) => {
+      const { authUserId } = getAuthContext(context);
+      const { publicationId } = context.params;
+
+      const thumbnailUrl = await getPublicationThumbnailUseCase.execute(
+        authUserId!,
+        publicationId,
+      );
+
+      return this.successResponse("OK", { thumbnailUrl }, 200);
     });
 
     route.get("/publications/:publicationId", async (context) => {
