@@ -74,12 +74,19 @@ jobs:
 
       # ──────────────────────────────────────────────────────────────────────
       # 4. Registrar a chave do host da VPS no known_hosts
+      #    Falha explícita se não conseguir nenhuma chave (host inacessível)
       # ──────────────────────────────────────────────────────────────────────
       - name: Add VPS to known hosts
         run: |
-          ssh-keyscan -p "${{ env.VPS_PORT }}" -T 10 -t rsa,ecdsa,ed25519 \
-            "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          KEYS=$(ssh-keyscan -p "${{ env.VPS_PORT }}" -T 15 -t rsa,ecdsa,ed25519 "${{ secrets.VPS_HOST }}" 2>/dev/null)
+          if [ -z "$KEYS" ]; then
+            echo "::error::ssh-keyscan não retornou nenhuma chave. Verifique VPS_HOST (${{ secrets.VPS_HOST }}) e VPS_PORT (${{ env.VPS_PORT }})."
+            exit 1
+          fi
+          echo "$KEYS" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+          echo "Host keys registrados com sucesso."
 
       # ──────────────────────────────────────────────────────────────────────
       # 5. Criar diretório de deploy na VPS (idempotente)
@@ -87,6 +94,8 @@ jobs:
       - name: Ensure deploy directory exists
         run: |
           ssh -p "${{ env.VPS_PORT }}" \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "mkdir -p ${{ secrets.VPS_DEPLOY_PATH }}"
 
@@ -102,7 +111,7 @@ jobs:
             --exclude='.env' \
             --exclude='generated/' \
             --exclude='.cursor/' \
-            -e "ssh -p ${{ env.VPS_PORT }}" \
+            -e "ssh -p ${{ env.VPS_PORT }} -o StrictHostKeyChecking=yes -o BatchMode=yes" \
             ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/"
 
       # ──────────────────────────────────────────────────────────────────────
@@ -110,8 +119,10 @@ jobs:
       # ──────────────────────────────────────────────────────────────────────
       - name: Copy .env to VPS
         run: |
-          scp -P "${{ env.VPS_PORT }}" .env \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/.env"
+          scp -P "${{ env.VPS_PORT }}" \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            .env "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_DEPLOY_PATH }}/.env"
 
       # ──────────────────────────────────────────────────────────────────────
       # 8. Build e deploy com Docker Compose
@@ -119,6 +130,8 @@ jobs:
       - name: Deploy with Docker Compose
         run: |
           ssh -p "${{ env.VPS_PORT }}" \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "cd ${{ secrets.VPS_DEPLOY_PATH }} && \
              docker compose -f docker-compose.prod.yml pull --ignore-buildable && \
@@ -133,5 +146,7 @@ jobs:
           echo "Aguardando aplicação inicializar..."
           sleep 15
           ssh -p "${{ env.VPS_PORT }}" \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "docker inspect --format='{{.State.Health.Status}}' instagram-posts-auto-app"
