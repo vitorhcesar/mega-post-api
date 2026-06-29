@@ -145,3 +145,15 @@ model PublicationTarget {
   @@index([status])
   @@map("publication_target")
 }
+
+model OmegaPayWebhookEvent {
+  id         String   @id @default(cuid())
+  event      String
+  token      String
+  payload    Json
+  receivedAt DateTime @default(now())
+
+  @@index([event])
+  @@index([receivedAt])
+  @@map("omegapay_webhook_event")
+}

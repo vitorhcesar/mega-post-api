@@ -59,6 +59,8 @@ jobs:
           MINIO_USE_SSL=${{ secrets.MINIO_USE_SSL }}
           REDIS_HOST=${{ secrets.REDIS_HOST }}
           REDIS_PORT=${{ secrets.REDIS_PORT }}
+          OMEGAPAY_PUBLIC_KEY=${{ secrets.OMEGAPAY_PUBLIC_KEY }}
+          OMEGAPAY_SECRET_KEY=${{ secrets.OMEGAPAY_SECRET_KEY }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}

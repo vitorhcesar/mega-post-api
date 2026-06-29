@@ -29,6 +29,8 @@ const envSchema = z.object({
     .default("false"),
   REDIS_HOST: z.string().min(1).default("localhost"),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
+  OMEGAPAY_PUBLIC_KEY: z.string().min(1).optional(),
+  OMEGAPAY_SECRET_KEY: z.string().min(1).optional(),
 });
 
 export type TEnv = z.infer<typeof envSchema>;
@@ -148,5 +150,21 @@ export class EnvService {
 
   get redisPort(): number {
     return this.env.REDIS_PORT;
+  }
+
+  get omegapayPublicKey(): string {
+    if (!this.env.OMEGAPAY_PUBLIC_KEY) {
+      throw new Error("OMEGAPAY_PUBLIC_KEY não configurado");
+    }
+
+    return this.env.OMEGAPAY_PUBLIC_KEY;
+  }
+
+  get omegapaySecretKey(): string {
+    if (!this.env.OMEGAPAY_SECRET_KEY) {
+      throw new Error("OMEGAPAY_SECRET_KEY não configurado");
+    }
+
+    return this.env.OMEGAPAY_SECRET_KEY;
   }
 }
