@@ -21,6 +21,11 @@ export class UserMapper {
       return AppRoleEnum.ADMIN;
     }
 
-    return AppRoleEnum.USER;
+    if (role === AppRoleEnum.CLIENT) {
+      return AppRoleEnum.CLIENT;
+    }
+
+    // legacy "user" role
+    return AppRoleEnum.CLIENT;
   }
 }

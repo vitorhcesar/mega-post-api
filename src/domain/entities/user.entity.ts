@@ -35,7 +35,7 @@ export class User {
       email: props.email,
       emailVerified: props.emailVerified ?? false,
       image: props.image ?? null,
-      role: props.role ?? AppRoleEnum.USER,
+      role: props.role ?? AppRoleEnum.CLIENT,
       createdAt: now,
       updatedAt: now,
     });

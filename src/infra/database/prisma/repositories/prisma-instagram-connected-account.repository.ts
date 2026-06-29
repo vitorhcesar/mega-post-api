@@ -78,4 +78,8 @@ export class PrismaInstagramConnectedAccountRepository
 
     return InstagramConnectedAccountMapper.toDomain(row);
   }
+
+  async countAll(): Promise<number> {
+    return this.getPrismaClient().instagramConnectedAccount.count();
+  }
 }

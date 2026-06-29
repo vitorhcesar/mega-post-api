@@ -1,4 +1,4 @@
 export enum AppRoleEnum {
-  USER = "user",
+  CLIENT = "client",
   ADMIN = "admin",
 }

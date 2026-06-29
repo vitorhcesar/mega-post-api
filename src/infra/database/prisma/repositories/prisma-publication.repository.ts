@@ -78,4 +78,10 @@ export class PrismaPublicationRepository
 
     return PublicationMapper.toDomain(row);
   }
+
+  async countByType(type: string): Promise<number> {
+    return this.getPrismaClient().publication.count({
+      where: { type },
+    });
+  }
 }

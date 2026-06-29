@@ -25,7 +25,7 @@ export function createAuthSessionUserMiddleware() {
       const role =
         session.user.role === AppRoleEnum.ADMIN
           ? AppRoleEnum.ADMIN
-          : AppRoleEnum.USER;
+          : AppRoleEnum.CLIENT;
 
       return {
         authUserId: session.user.id,

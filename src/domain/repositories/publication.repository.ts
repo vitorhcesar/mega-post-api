@@ -5,4 +5,5 @@ export interface IPublicationRepository {
   findByIdAndUserId(id: string, userId: string): Promise<Publication | null>;
   findAllByUserId(userId: string): Promise<Publication[]>;
   save(publication: Publication): Promise<Publication>;
+  countByType(type: string): Promise<number>;
 }

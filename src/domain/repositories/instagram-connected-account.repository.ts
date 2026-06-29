@@ -12,6 +12,7 @@ export interface IInstagramConnectedAccountRepository {
     instagramUserId: string,
   ): Promise<InstagramConnectedAccount | null>;
   save(account: InstagramConnectedAccount): Promise<InstagramConnectedAccount>;
+  countAll(): Promise<number>;
 }
 
 export interface IInstagramOAuthStateRepository {
