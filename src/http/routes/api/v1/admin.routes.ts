@@ -7,7 +7,11 @@ import { GetAdminDashboardMetricsUseCase } from "@/app/usecases/admin/get-admin-
 import { ListAdminUsersUseCase } from "@/app/usecases/admin/list-admin-users.usecase";
 import { GetAdminUserDetailsUseCase } from "@/app/usecases/admin/get-admin-user-details.usecase";
 import { UpdateAdminUserRoleUseCase } from "@/app/usecases/admin/update-admin-user-role.usecase";
+import { ListAdminOmegaPayWebhooksUseCase } from "@/app/usecases/admin/list-admin-omegapay-webhooks.usecase";
+import { GetAdminOmegaPayWebhookDetailsUseCase } from "@/app/usecases/admin/get-admin-omegapay-webhook-details.usecase";
+import { PrismaOmegaPayWebhookRepository } from "@/infra/database/prisma/repositories/prisma-omegapay-webhook.repository";
 import { AppRoleEnum } from "@/domain/enums/app-role.enum";
+import { OmegaPayWebhookEventEnum } from "@/domain/enums/omegapay.enum";
 import { z } from "zod";
 
 const listUsersQuerySchema = z.object({
@@ -18,6 +22,15 @@ const listUsersQuerySchema = z.object({
 
 const updateRoleBodySchema = z.object({
   role: z.enum([AppRoleEnum.CLIENT, AppRoleEnum.ADMIN]),
+});
+
+const listOmegaPayWebhooksQuerySchema = z.object({
+  event: z.nativeEnum(OmegaPayWebhookEventEnum).optional(),
+  token: z.string().optional(),
+  receivedFrom: z.coerce.date().optional(),
+  receivedTo: z.coerce.date().optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
 });
 
 export class AdminRoutes extends BaseHttpRoute {
@@ -40,6 +53,12 @@ export class AdminRoutes extends BaseHttpRoute {
     const updateAdminUserRoleUseCase = new UpdateAdminUserRoleUseCase(
       userRepository,
     );
+    const omegaPayWebhookRepository = new PrismaOmegaPayWebhookRepository();
+    const listAdminOmegaPayWebhooksUseCase = new ListAdminOmegaPayWebhooksUseCase(
+      omegaPayWebhookRepository,
+    );
+    const getAdminOmegaPayWebhookDetailsUseCase =
+      new GetAdminOmegaPayWebhookDetailsUseCase(omegaPayWebhookRepository);
 
     route.get("/admin/dashboard/metrics", async () => {
       const metrics = await getDashboardMetricsUseCase.execute();
@@ -70,6 +89,18 @@ export class AdminRoutes extends BaseHttpRoute {
       });
 
       return this.successResponse("Papel atualizado", user, 200);
+    });
+
+    route.get("/admin/omegapay/webhooks", async (context) => {
+      const query = listOmegaPayWebhooksQuerySchema.parse(context.query);
+      const result = await listAdminOmegaPayWebhooksUseCase.execute(query);
+      return this.successResponse("OK", result, 200);
+    });
+
+    route.get("/admin/omegapay/webhooks/:webhookId", async (context) => {
+      const { webhookId } = context.params;
+      const webhook = await getAdminOmegaPayWebhookDetailsUseCase.execute(webhookId);
+      return this.successResponse("OK", webhook, 200);
     });
 
     return route;
