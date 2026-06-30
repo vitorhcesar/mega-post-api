@@ -41,9 +41,9 @@ jobs:
       #   SMTP_FROM               = noreply@solixpost.com.br
       #
       # Conexões internas Docker (hostnames dos containers):
-      #   DATABASE_URL   = postgresql://USER:PASS@megafeed-postgres:5432/DB?schema=public
-      #   REDIS_HOST     = megafeed-redis
-      #   MINIO_ENDPOINT = megafeed-minio
+      #   DATABASE_URL   = postgresql://USER:PASS@solixpost-postgres:5432/DB?schema=public
+      #   REDIS_HOST     = solixpost-redis
+      #   MINIO_ENDPOINT = solixpost-minio
       - name: Create .env file
         run: |
           cat > .env << 'ENVEOF'
@@ -164,4 +164,4 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o BatchMode=yes \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "docker inspect --format='{{.State.Health.Status}}' megafeed-app"
+            "docker inspect --format='{{.State.Health.Status}}' solixpost-api"

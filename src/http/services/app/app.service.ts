@@ -38,7 +38,7 @@ export class AppService {
         swagger({
           documentation: {
             info: {
-              title: "Mega Feed API",
+              title: "SolixPost API",
               version: "0.1.0",
               description:
                 "API para publicação centralizada de posts e stories no Instagram.",

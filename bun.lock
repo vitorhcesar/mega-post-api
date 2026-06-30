@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "megafeed-backend",
+      "name": "solixpost-api",
       "dependencies": {
         "@elysiajs/cors": "^1.3.0",
         "@elysiajs/swagger": "^1.3.0",

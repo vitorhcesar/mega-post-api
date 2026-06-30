@@ -1,31 +1,31 @@
-name: megafeed
+name: solixpost
 
 services:
-  megafeed-postgres:
+  solixpost-postgres:
     image: postgres:16-alpine
-    container_name: megafeed-postgres
+    container_name: solixpost-postgres
     restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: megafeed
+      POSTGRES_DB: solixpost
     volumes:
-      - megafeed-postgres-data:/var/lib/postgresql/data
+      - solixpost-postgres-data:/var/lib/postgresql/data
 
-  megafeed-redis:
+  solixpost-redis:
     image: redis:7-alpine
-    container_name: megafeed-redis
+    container_name: solixpost-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - megafeed-redis-data:/data
+      - solixpost-redis-data:/data
 
-  megafeed-minio:
+  solixpost-minio:
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
-    container_name: megafeed-minio
+    container_name: solixpost-minio
     restart: unless-stopped
     ports:
       - "9000:9000"
@@ -35,9 +35,9 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
-      - megafeed-minio-data:/data
+      - solixpost-minio-data:/data
 
 volumes:
-  megafeed-postgres-data:
-  megafeed-redis-data:
-  megafeed-minio-data:
+  solixpost-postgres-data:
+  solixpost-redis-data:
+  solixpost-minio-data:
