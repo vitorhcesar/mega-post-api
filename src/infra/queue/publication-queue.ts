@@ -77,6 +77,7 @@ export class PublicationWorker {
     const publishingService = new InstagramContentPublishingService();
     const oauthService = new InstagramOAuthClient();
     const tempStorage = new MinioTemporaryPublicationMediaStorage();
+    const env = EnvService.getInstance();
 
     const publication = await publicationRepository.findById(publicationId);
 
@@ -122,17 +123,25 @@ export class PublicationWorker {
           }
         }
 
+        const objectKeys = publication.objectKeys;
+        const mediaUrls = objectKeys.map(
+          (objectKey) => `${env.publicApiUrl}/public/objects/${objectKey}`,
+        );
+
         const publishInput = {
           instagramUserId: account.instagramUserId,
           accessToken,
-          mediaUrl: publication.mediaUrl,
+          mediaUrl: mediaUrls[0]!,
+          mediaUrls,
           caption: publication.caption,
         };
 
         const result =
           publication.type === PublicationTypeEnum.STORY
             ? await publishingService.publishStory(publishInput)
-            : await publishingService.publishPost(publishInput);
+            : mediaUrls.length > 1
+              ? await publishingService.publishCarouselPost(publishInput)
+              : await publishingService.publishPost(publishInput);
 
         target.markAsSuccess(result.instagramMediaId, result.instagramPermalink);
       } catch (error) {
@@ -155,15 +164,15 @@ export class PublicationWorker {
     publication.replaceTargets(publication.targets);
     publication.finalizeStatus();
 
-    const objectKeyToDelete = publication.objectKey;
+    const objectKeysToDelete = publication.objectKeys;
     publication.clearObjectKey();
 
     await publicationRepository.save(publication);
 
-    if (objectKeyToDelete) {
-      await tempStorage.delete(objectKeyToDelete).catch((err: unknown) => {
+    for (const objectKey of objectKeysToDelete) {
+      await tempStorage.delete(objectKey).catch((err: unknown) => {
         console.error(
-          `[PublicationWorker] Falha ao deletar mídia temporária ${objectKeyToDelete}:`,
+          `[PublicationWorker] Falha ao deletar mídia temporária ${objectKey}:`,
           err,
         );
       });

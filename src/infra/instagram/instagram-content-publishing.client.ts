@@ -1,5 +1,6 @@
 import { AppError } from "@/http/services/app/errors/app.error";
 import type {
+  IPublishCarouselInput,
   IPublishMediaInput,
   IPublishMediaResult,
 } from "@/domain/instagram/instagram-content-publishing.service";
@@ -41,10 +42,11 @@ type InstagramContainerStatusCode =
 
 const CONTAINER_POLL_INTERVAL_MS = 3_000;
 const CONTAINER_POLL_MAX_ATTEMPTS = 60;
+const VIDEO_URL_PATTERN = /\.(mp4|mov|webm)(\?|$)/i;
 
 export class InstagramContentPublishingClient {
   async publishPost(input: IPublishMediaInput): Promise<IPublishMediaResult> {
-    const containerId = await this.createMediaContainer(input.instagramUserId, {
+    const containerId = await this.createSingleMediaContainer(input.instagramUserId, {
       accessToken: input.accessToken,
       mediaUrl: input.mediaUrl,
       caption: input.caption,
@@ -58,8 +60,51 @@ export class InstagramContentPublishingClient {
     });
   }
 
+  async publishCarouselPost(
+    input: IPublishCarouselInput,
+  ): Promise<IPublishMediaResult> {
+    if (input.mediaUrls.length < 2) {
+      throw new AppError(
+        "Carrossel requer ao menos duas mídias",
+        400,
+        "instagram_carousel_min_items",
+      );
+    }
+
+    const childContainerIds: string[] = [];
+
+    for (const mediaUrl of input.mediaUrls) {
+      const containerId = await this.createCarouselItemContainer(
+        input.instagramUserId,
+        {
+          accessToken: input.accessToken,
+          mediaUrl,
+        },
+      );
+
+      await this.waitForContainerReady(containerId, input.accessToken);
+      childContainerIds.push(containerId);
+    }
+
+    const carouselContainerId = await this.createCarouselContainer(
+      input.instagramUserId,
+      {
+        accessToken: input.accessToken,
+        children: childContainerIds,
+        caption: input.caption,
+      },
+    );
+
+    await this.waitForContainerReady(carouselContainerId, input.accessToken);
+
+    return this.publishContainer(input.instagramUserId, {
+      accessToken: input.accessToken,
+      containerId: carouselContainerId,
+    });
+  }
+
   async publishStory(input: IPublishMediaInput): Promise<IPublishMediaResult> {
-    const containerId = await this.createMediaContainer(input.instagramUserId, {
+    const containerId = await this.createSingleMediaContainer(input.instagramUserId, {
       accessToken: input.accessToken,
       mediaUrl: input.mediaUrl,
       mediaType: "STORIES",
@@ -73,7 +118,11 @@ export class InstagramContentPublishingClient {
     });
   }
 
-  private async createMediaContainer(
+  private isVideoUrl(mediaUrl: string): boolean {
+    return VIDEO_URL_PATTERN.test(mediaUrl);
+  }
+
+  private async createSingleMediaContainer(
     instagramUserId: string,
     input: {
       accessToken: string;
@@ -83,9 +132,15 @@ export class InstagramContentPublishingClient {
     },
   ): Promise<string> {
     const body = new URLSearchParams({
-      image_url: input.mediaUrl,
       access_token: input.accessToken,
     });
+
+    if (this.isVideoUrl(input.mediaUrl)) {
+      body.set("media_type", "VIDEO");
+      body.set("video_url", input.mediaUrl);
+    } else {
+      body.set("image_url", input.mediaUrl);
+    }
 
     if (input.caption) {
       body.set("caption", input.caption);
@@ -95,6 +150,56 @@ export class InstagramContentPublishingClient {
       body.set("media_type", input.mediaType);
     }
 
+    return this.postMediaContainer(instagramUserId, body);
+  }
+
+  private async createCarouselItemContainer(
+    instagramUserId: string,
+    input: {
+      accessToken: string;
+      mediaUrl: string;
+    },
+  ): Promise<string> {
+    const body = new URLSearchParams({
+      access_token: input.accessToken,
+      is_carousel_item: "true",
+    });
+
+    if (this.isVideoUrl(input.mediaUrl)) {
+      body.set("media_type", "VIDEO");
+      body.set("video_url", input.mediaUrl);
+    } else {
+      body.set("image_url", input.mediaUrl);
+    }
+
+    return this.postMediaContainer(instagramUserId, body);
+  }
+
+  private async createCarouselContainer(
+    instagramUserId: string,
+    input: {
+      accessToken: string;
+      children: string[];
+      caption?: string | null;
+    },
+  ): Promise<string> {
+    const body = new URLSearchParams({
+      access_token: input.accessToken,
+      media_type: "CAROUSEL",
+      children: input.children.join(","),
+    });
+
+    if (input.caption) {
+      body.set("caption", input.caption);
+    }
+
+    return this.postMediaContainer(instagramUserId, body);
+  }
+
+  private async postMediaContainer(
+    instagramUserId: string,
+    body: URLSearchParams,
+  ): Promise<string> {
     const response = await fetch(
       `https://graph.instagram.com/v21.0/${instagramUserId}/media`,
       {

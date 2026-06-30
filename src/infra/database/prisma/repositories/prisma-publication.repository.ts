@@ -47,6 +47,7 @@ export class PrismaPublicationRepository
         data: {
           status: data.status,
           objectKey: data.objectKey,
+          objectKeys: data.objectKeys,
           updatedAt: data.updatedAt,
         },
       });

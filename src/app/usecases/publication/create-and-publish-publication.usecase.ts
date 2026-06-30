@@ -15,7 +15,8 @@ export interface ICreatePublicationInput {
   type: PublicationTypeEnum;
   destinationScope: PublicationDestinationScopeEnum;
   caption?: string | null;
-  objectKey: string;
+  objectKey?: string;
+  objectKeys?: string[];
   instagramConnectedAccountIds?: string[];
 }
 
@@ -44,15 +45,28 @@ export class CreateAndPublishPublicationUseCase {
       );
     }
 
-    const mediaUrl = `${this.env.publicApiUrl}/public/objects/${input.objectKey}`;
+    const objectKeys = this.resolveObjectKeys(input);
+
+    if (objectKeys.length === 0) {
+      throw new AppError(
+        "Arquivo de mídia é obrigatório",
+        400,
+        "media_required",
+      );
+    }
+
+    const mediaUrls = objectKeys.map(
+      (objectKey) => `${this.env.publicApiUrl}/public/objects/${objectKey}`,
+    );
 
     const publication = Publication.create({
       userId: authUserId,
       type: input.type,
       destinationScope: input.destinationScope,
       caption: input.caption,
-      mediaUrl,
-      objectKey: input.objectKey,
+      mediaUrl: mediaUrls[0]!,
+      objectKey: objectKeys[0]!,
+      objectKeys,
       instagramConnectedAccountIds: destinationAccountIds,
     });
 
@@ -101,6 +115,18 @@ export class CreateAndPublishPublicationUseCase {
     }
 
     return selectedIds;
+  }
+
+  private resolveObjectKeys(input: ICreatePublicationInput): string[] {
+    if (input.objectKeys && input.objectKeys.length > 0) {
+      return input.objectKeys;
+    }
+
+    if (input.objectKey) {
+      return [input.objectKey];
+    }
+
+    return [];
   }
 }
 

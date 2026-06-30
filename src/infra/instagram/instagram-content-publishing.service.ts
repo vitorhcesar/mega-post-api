@@ -1,6 +1,7 @@
 import { InstagramContentPublishingClient } from "@/infra/instagram/instagram-content-publishing.client";
 import type {
   IInstagramContentPublishingService,
+  IPublishCarouselInput,
   IPublishMediaInput,
   IPublishMediaResult,
 } from "@/domain/instagram/instagram-content-publishing.service";
@@ -12,6 +13,10 @@ export class InstagramContentPublishingService
 
   publishPost(input: IPublishMediaInput): Promise<IPublishMediaResult> {
     return this.client.publishPost(input);
+  }
+
+  publishCarouselPost(input: IPublishCarouselInput): Promise<IPublishMediaResult> {
+    return this.client.publishCarouselPost(input);
   }
 
   publishStory(input: IPublishMediaInput): Promise<IPublishMediaResult> {

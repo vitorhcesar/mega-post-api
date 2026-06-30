@@ -13,6 +13,7 @@ export interface IPublicationDto {
   destinationScope: string;
   caption: string | null;
   mediaUrl: string;
+  mediaUrls: string[];
   status: string;
   targets: IPublicationTargetDto[];
   createdAt: string;

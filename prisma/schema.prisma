@@ -138,6 +138,7 @@ model Publication {
   caption          String?
   mediaUrl         String
   objectKey        String?
+  objectKeys       String[] @default([])
   status           String   @default("pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

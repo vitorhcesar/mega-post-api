@@ -27,6 +27,7 @@ export class PublicationMapper {
       caption: row.caption,
       mediaUrl: row.mediaUrl,
       objectKey: row.objectKey,
+      objectKeys: row.objectKeys.length > 0 ? row.objectKeys : row.objectKey ? [row.objectKey] : [],
       status: PublicationMapper.toPublicationStatus(row.status),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -54,6 +55,7 @@ export class PublicationMapper {
       caption: data.caption,
       mediaUrl: data.mediaUrl,
       objectKey: data.objectKey,
+      objectKeys: data.objectKeys,
       status: data.status,
       targets: {
         create: data.targets.map((target) => ({
@@ -73,6 +75,7 @@ export class PublicationMapper {
     return {
       status: data.status,
       objectKey: data.objectKey,
+      objectKeys: data.objectKeys,
       updatedAt: data.updatedAt,
       targets: {
         upsert: data.targets.map((target) => ({

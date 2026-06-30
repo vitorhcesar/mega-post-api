@@ -9,10 +9,22 @@ export const createPublicationBodySchema = z
     type: z.nativeEnum(PublicationTypeEnum),
     destinationScope: z.nativeEnum(PublicationDestinationScopeEnum),
     caption: z.string().max(2200).optional().nullable(),
-    objectKey: z.string().min(1),
+    objectKey: z.string().min(1).optional(),
+    objectKeys: z.array(z.string().min(1)).min(1).max(10).optional(),
     instagramConnectedAccountIds: z.array(z.string().min(1)).optional(),
   })
   .superRefine((data, context) => {
+    const hasObjectKey = Boolean(data.objectKey);
+    const hasObjectKeys = Boolean(data.objectKeys && data.objectKeys.length > 0);
+
+    if (!hasObjectKey && !hasObjectKeys) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "objectKey ou objectKeys é obrigatório",
+        path: ["objectKeys"],
+      });
+    }
+
     if (
       data.destinationScope === PublicationDestinationScopeEnum.SELECTED &&
       (!data.instagramConnectedAccountIds ||

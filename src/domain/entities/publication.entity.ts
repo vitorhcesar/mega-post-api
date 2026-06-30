@@ -25,6 +25,7 @@ export interface IPublicationProps {
   caption: string | null;
   mediaUrl: string;
   objectKey: string | null;
+  objectKeys: string[];
   status: PublicationStatusEnum;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +39,7 @@ export interface IPublicationCreateProps {
   caption?: string | null;
   mediaUrl: string;
   objectKey: string | null;
+  objectKeys: string[];
   instagramConnectedAccountIds: string[];
 }
 
@@ -149,6 +151,7 @@ export class Publication {
       caption: props.caption ?? null,
       mediaUrl: props.mediaUrl,
       objectKey: props.objectKey,
+      objectKeys: props.objectKeys,
       status: PublicationStatusEnum.PENDING,
       createdAt: now,
       updatedAt: now,
@@ -186,6 +189,14 @@ export class Publication {
 
   get objectKey(): string | null {
     return this.props.objectKey;
+  }
+
+  get objectKeys(): string[] {
+    if (this.props.objectKeys.length > 0) {
+      return [...this.props.objectKeys];
+    }
+
+    return this.props.objectKey ? [this.props.objectKey] : [];
   }
 
   get status(): PublicationStatusEnum {
@@ -227,6 +238,7 @@ export class Publication {
 
   clearObjectKey(): void {
     this.props.objectKey = null;
+    this.props.objectKeys = [];
     this.props.updatedAt = new Date();
   }
 
