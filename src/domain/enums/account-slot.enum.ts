@@ -8,7 +8,7 @@ export const SLOT_DURATION_DAYS = 30;
 
 export const SLOT_COMBO_CONFIG = [
   { quantity: 10, discountRate: 0.1 },
-  { quantity: 25, discountRate: 0.15 },
+  { quantity: 25, discountRate: 0.2 },
   { quantity: 50, discountRate: 0.2 },
   { quantity: 100, discountRate: 0.25 },
 ] as const;
