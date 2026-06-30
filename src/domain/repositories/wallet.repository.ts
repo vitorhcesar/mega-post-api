@@ -42,10 +42,20 @@ export interface ICreditWalletInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface IDebitWalletInput {
+  walletId: string;
+  amount: number;
+  type: WalletTransactionTypeEnum;
+  description?: string;
+  referenceKey?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface IWalletRepository {
   getOrCreateByUserId(userId: string): Promise<IWallet>;
   findByUserId(userId: string): Promise<IWallet | null>;
   creditWallet(input: ICreditWalletInput): Promise<IWallet>;
+  debitWallet(input: IDebitWalletInput): Promise<IWallet>;
   createRecharge(input: {
     walletId: string;
     identifier: string;

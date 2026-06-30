@@ -16,7 +16,14 @@ export interface IInstagramConnectedAccountRepository {
 }
 
 export interface IInstagramOAuthStateRepository {
-  create(userId: string, state: string, expiresAt: Date): Promise<void>;
-  findValidState(state: string): Promise<{ userId: string } | null>;
+  create(
+    userId: string,
+    state: string,
+    expiresAt: Date,
+    accountSlotId?: string,
+  ): Promise<void>;
+  findValidState(
+    state: string,
+  ): Promise<{ userId: string; accountSlotId: string | null } | null>;
   deleteByState(state: string): Promise<void>;
 }

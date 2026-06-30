@@ -1,10 +1,12 @@
 import { Prisma } from "../../../../../generated/prisma";
 import type {
   ICreditWalletInput,
+  IDebitWalletInput,
   IWallet,
   IWalletRecharge,
   IWalletRepository,
 } from "@/domain/repositories/wallet.repository";
+import { AppError } from "@/http/services/app/errors/app.error";
 import {
   WalletRechargeStatusEnum,
   WalletTransactionTypeEnum,
@@ -106,6 +108,58 @@ export class PrismaWalletRepository
 
       const currentBalance = decimalToNumber(wallet.balance);
       const nextBalance = Number((currentBalance + input.amount).toFixed(2));
+
+      const updatedWallet = await tx.wallet.update({
+        where: { id: input.walletId },
+        data: { balance: nextBalance },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: input.walletId,
+          type: input.type,
+          amount: input.amount,
+          balanceAfter: nextBalance,
+          description: input.description ?? null,
+          referenceKey: input.referenceKey ?? null,
+          metadata: input.metadata as Prisma.InputJsonValue | undefined,
+        },
+      });
+
+      return mapWallet(updatedWallet);
+    });
+  }
+
+  async debitWallet(input: IDebitWalletInput): Promise<IWallet> {
+    return this.getPrismaClient().$transaction(async (tx) => {
+      if (input.referenceKey) {
+        const existing = await tx.walletTransaction.findUnique({
+          where: { referenceKey: input.referenceKey },
+        });
+
+        if (existing) {
+          const wallet = await tx.wallet.findUniqueOrThrow({
+            where: { id: input.walletId },
+          });
+          return mapWallet(wallet);
+        }
+      }
+
+      const wallet = await tx.wallet.findUniqueOrThrow({
+        where: { id: input.walletId },
+      });
+
+      const currentBalance = decimalToNumber(wallet.balance);
+
+      if (currentBalance < input.amount) {
+        throw new AppError(
+          "Saldo insuficiente na carteira",
+          400,
+          "wallet_insufficient_balance",
+        );
+      }
+
+      const nextBalance = Number((currentBalance - input.amount).toFixed(2));
 
       const updatedWallet = await tx.wallet.update({
         where: { id: input.walletId },

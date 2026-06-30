@@ -20,6 +20,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   instagramConnectedAccounts InstagramConnectedAccount[]
+  accountSlots  AccountSlot[]
   publications  Publication[]
   wallet        Wallet?
 
@@ -90,6 +91,7 @@ model InstagramConnectedAccount {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   publicationTargets PublicationTarget[]
+  accountSlot       AccountSlot?
 
   @@unique([userId, instagramUserId])
   @@index([userId])
@@ -98,15 +100,33 @@ model InstagramConnectedAccount {
 }
 
 model InstagramOAuthState {
-  id        String   @id @default(cuid())
-  userId    String
-  state     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  state         String   @unique
+  accountSlotId String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
 
   @@index([userId])
   @@index([expiresAt])
   @@map("instagram_oauth_state")
+}
+
+model AccountSlot {
+  id                          String   @id @default(cuid())
+  userId                      String
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instagramConnectedAccountId String?  @unique
+  instagramConnectedAccount   InstagramConnectedAccount? @relation(fields: [instagramConnectedAccountId], references: [id], onDelete: SetNull)
+  status                      String   @default("active")
+  expiresAt                   DateTime
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("account_slot")
 }
 
 model Publication {

@@ -8,7 +8,9 @@ import {
 } from "@/app/usecases/instagram/instagram-connected-account.usecases";
 import { PrismaInstagramConnectedAccountRepository } from "@/infra/database/prisma/repositories/prisma-instagram-connected-account.repository";
 import { PrismaInstagramOAuthStateRepository } from "@/infra/database/prisma/repositories/prisma-instagram-oauth-state.repository";
+import { PrismaAccountSlotRepository } from "@/infra/database/prisma/repositories/prisma-account-slot.repository";
 import { InstagramOAuthClient } from "@/infra/instagram/instagram-oauth.client";
+import { instagramConnectQuerySchema } from "@/http/validation/schemas/account-slot.schema";
 
 export class InstagramRoutes extends BaseHttpRoute {
   build(): THttpRoute {
@@ -17,12 +19,14 @@ export class InstagramRoutes extends BaseHttpRoute {
     const instagramConnectedAccountRepository =
       new PrismaInstagramConnectedAccountRepository();
     const instagramOAuthStateRepository = new PrismaInstagramOAuthStateRepository();
+    const accountSlotRepository = new PrismaAccountSlotRepository();
     const instagramOAuthService = new InstagramOAuthClient();
 
     const createInstagramConnectSessionUseCase =
       new CreateInstagramConnectSessionUseCase(
         instagramOAuthStateRepository,
         instagramOAuthService,
+        accountSlotRepository,
       );
     const listInstagramConnectedAccountsUseCase =
       new ListInstagramConnectedAccountsUseCase(
@@ -30,12 +34,15 @@ export class InstagramRoutes extends BaseHttpRoute {
       );
     const disconnectInstagramAccountUseCase = new DisconnectInstagramAccountUseCase(
       instagramConnectedAccountRepository,
+      accountSlotRepository,
     );
 
     route.get("/instagram/connect", async (context) => {
       const { authUserId } = getAuthContext(context);
+      const query = instagramConnectQuerySchema.parse(context.query);
       const session = await createInstagramConnectSessionUseCase.execute(
         authUserId!,
+        query.slotId,
       );
 
       return this.successResponse("OK", session, 200);

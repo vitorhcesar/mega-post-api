@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { AppError } from "@/http/services/app/errors/app.error";
 import { InstagramConnectedAccount } from "@/domain/entities/instagram-connected-account.entity";
+import { AccountSlotStatusEnum } from "@/domain/enums/account-slot.enum";
+import type { IAccountSlotRepository } from "@/domain/repositories/account-slot.repository";
 import type {
   IInstagramConnectedAccountRepository,
   IInstagramOAuthStateRepository,
@@ -19,13 +21,48 @@ export class CreateInstagramConnectSessionUseCase {
   constructor(
     private readonly oauthStateRepository: IInstagramOAuthStateRepository,
     private readonly instagramOAuthService: IInstagramOAuthService,
+    private readonly accountSlotRepository: IAccountSlotRepository,
   ) {}
 
-  async execute(authUserId: string): Promise<IInstagramConnectSessionDto> {
+  async execute(
+    authUserId: string,
+    slotId: string,
+  ): Promise<IInstagramConnectSessionDto> {
+    await this.accountSlotRepository.expireOverdueSlots(authUserId);
+
+    const slot = await this.accountSlotRepository.findByIdAndUserId(
+      slotId,
+      authUserId,
+    );
+
+    if (!slot) {
+      throw new AppError("Slot não encontrado", 404, "account_slot_not_found");
+    }
+
+    const isExpired =
+      slot.status === AccountSlotStatusEnum.EXPIRED ||
+      slot.expiresAt.getTime() < Date.now();
+
+    if (isExpired) {
+      throw new AppError(
+        "Este slot está vencido. Renove-o antes de conectar uma conta.",
+        400,
+        "account_slot_expired",
+      );
+    }
+
+    if (slot.instagramConnectedAccountId) {
+      throw new AppError(
+        "Este slot já possui uma conta conectada",
+        400,
+        "account_slot_occupied",
+      );
+    }
+
     const state = randomBytes(24).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await this.oauthStateRepository.create(authUserId, state, expiresAt);
+    await this.oauthStateRepository.create(authUserId, state, expiresAt, slotId);
 
     return {
       authorizationUrl: this.instagramOAuthService.buildAuthorizationUrl(state),
@@ -41,6 +78,7 @@ export class CompleteInstagramConnectUseCase {
     private readonly instagramConnectedAccountRepository: IInstagramConnectedAccountRepository,
     private readonly instagramOAuthService: IInstagramOAuthService,
     private readonly instagramGraphService: IInstagramGraphService,
+    private readonly accountSlotRepository: IAccountSlotRepository,
   ) {}
 
   async execute(input: {
@@ -51,6 +89,37 @@ export class CompleteInstagramConnectUseCase {
 
     if (!oauthState) {
       throw new AppError("State OAuth inválido ou expirado", 400, "invalid_oauth_state");
+    }
+
+    if (!oauthState.accountSlotId) {
+      throw new AppError(
+        "Sessão OAuth inválida: slot não informado",
+        400,
+        "account_slot_missing",
+      );
+    }
+
+    await this.accountSlotRepository.expireOverdueSlots(oauthState.userId);
+
+    const slot = await this.accountSlotRepository.findByIdAndUserId(
+      oauthState.accountSlotId,
+      oauthState.userId,
+    );
+
+    if (!slot) {
+      throw new AppError("Slot não encontrado", 404, "account_slot_not_found");
+    }
+
+    const isExpired =
+      slot.status === AccountSlotStatusEnum.EXPIRED ||
+      slot.expiresAt.getTime() < Date.now();
+
+    if (isExpired) {
+      throw new AppError(
+        "Este slot está vencido. Renove-o antes de conectar uma conta.",
+        400,
+        "account_slot_expired",
+      );
     }
 
     const tokens = await this.instagramOAuthService.exchangeAuthorizationCode(
@@ -64,6 +133,28 @@ export class CompleteInstagramConnectUseCase {
         oauthState.userId,
         profile.instagramUserId,
       );
+
+    const existingAccountSlot = existingAccount
+      ? await this.accountSlotRepository.findByInstagramConnectedAccountId(
+          existingAccount.id!,
+        )
+      : null;
+
+    if (existingAccount && existingAccountSlot && existingAccountSlot.id !== slot.id) {
+      throw new AppError(
+        "Esta conta Instagram já está conectada em outro slot",
+        400,
+        "instagram_account_already_connected",
+      );
+    }
+
+    if (slot.instagramConnectedAccountId && slot.instagramConnectedAccountId !== existingAccount?.id) {
+      throw new AppError(
+        "Este slot já possui uma conta conectada",
+        400,
+        "account_slot_occupied",
+      );
+    }
 
     let account = existingAccount;
 
@@ -92,6 +183,8 @@ export class CompleteInstagramConnectUseCase {
     const savedAccount =
       await this.instagramConnectedAccountRepository.save(account);
 
+    await this.accountSlotRepository.assignAccount(slot.id, savedAccount.id!);
+
     await this.oauthStateRepository.deleteByState(input.state);
 
     return mapInstagramConnectedAccountToDto(savedAccount);
@@ -114,6 +207,7 @@ export class ListInstagramConnectedAccountsUseCase {
 export class DisconnectInstagramAccountUseCase {
   constructor(
     private readonly instagramConnectedAccountRepository: IInstagramConnectedAccountRepository,
+    private readonly accountSlotRepository: IAccountSlotRepository,
   ) {}
 
   async execute(authUserId: string, accountId: string): Promise<void> {
@@ -129,5 +223,6 @@ export class DisconnectInstagramAccountUseCase {
 
     account.markAsDisconnected();
     await this.instagramConnectedAccountRepository.save(account);
+    await this.accountSlotRepository.releaseAccount(accountId);
   }
 }
